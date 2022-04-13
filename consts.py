@@ -4,34 +4,24 @@
 from enum import Enum
 
 
-class PositionStatus(Enum):
-    """Class representing the status of a position"""
+class Hit(Enum):
+    """Class representing the status of a hit"""
 
-    correct = "c"  # Letter in correct position
-    included = "i"  # Letter in position included
-    undefined = "_"  # Letter in position is undefined
-
-
-class LetterStatus(Enum):
-    """Class representing the status of a letter"""
-
-    correct = "c"  # Letter in correct position
-    included = "i"  # Letter is included
-    excluded = "e"  # Letter is excluded
-    undefined = "_"  # Letter is undefined
+    CORRECT = "c"  # Letter is correct
+    MISPLACED = "m"  # Letter is misplaced
+    INCORRECT = "_"  # Letter is incorrect
 
 
-class State(Enum):
+class GameState(Enum):
     """Class representing the game state"""
 
-    running = "p"  # Game in progress
-    loose = "l"  # Game lost
-    win = "w"  # Game won
+    RUNNING = "r"  # Game running
+    LOST = "l"  # Game lost
+    WON = "w"  # Game won
 
 
-class GuessValidness(Enum):
-    """Class representing the guess validness"""
+class AttemptValidness(Enum):
+    """Class representing the attempt validness"""
 
-    undefined = "_"  # Guess validness is undefined
-    invalid = "i"  # Guess validness is invalid
-    valid = "v"  # Guess validness is valid
+    INVALID = "i"  # Attempt is invalid
+    VALID = "v"  # Attempt is valid

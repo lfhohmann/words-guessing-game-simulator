@@ -7,18 +7,14 @@ This is the core simulator for games like Wordle, Quordle, Octordle, Term.ooo an
 
 from consts import *
 
-# TODO: Return a list of letters and their status (excluded, included, correct or unknown), for each attempt
-# TODO: Implement 'Hard Mode'
-# TODO: Return 'player_guess'?
-
 
 __author__ = "Lucas Hohmann"
 __email__ = "lfhohmann@gmail.com"
 __user__ = "@lfhohmann"
 
-__date__ = "2022/04/07"
+__date__ = "2022/04/13"
 __status__ = "Production"
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __license__ = "MIT"
 
 
@@ -27,9 +23,8 @@ class GameCore:
 
     def __init__(
         self,
-        solution: str,
-        hard_mode: bool,
         max_attempts: int,
+        game_solution: str,
         valid_guesses: list,
         valid_answers: list,
     ) -> None:
@@ -40,14 +35,11 @@ class GameCore:
         ARGUMENTS:
         -----------
 
-        solution: str (required)
-            A word for the game's solution
-
-        hard_mode: bool (required)
-            Wether or not to enable 'Hard Mode'
-
         max_attempts: int (required)
             The maximum number of attempts the player can make
+
+        game_solution: str (required)
+            A word for the game's solution
 
         valid_guesses: list (required)
             Valid guesses for the game
@@ -62,21 +54,20 @@ class GameCore:
         """
 
         # Store arguments
-        self.solution = solution
-        self.hard_mode = hard_mode
         self.max_attempts = max_attempts
+        self.game_solution = game_solution
         self.valid_guesses = valid_guesses
         self.valid_answers = valid_answers
 
-        # Store length of solution in a variable, so we won't have to call len() every time
-        self.words_length = len(self.solution)
+        # Store length of the game solution in a variable, so we won't have to call len() every time
+        self.words_length = len(self.game_solution)
 
-        # Init guess validness and game state
-        self.guess_validness = GuessValidness.undefined
-        self.state = State.running
+        # Init attempt validness and game state
+        self.attempt_validness = AttemptValidness.INVALID
+        self.game_state = GameState.RUNNING
 
         # Init attempt counter
-        self.attempt = 0
+        self.attempt_number = 0
 
     def __response(self) -> dict:
         """
@@ -89,27 +80,21 @@ class GameCore:
             The values that need to be returned by the 'play()' method
         """
 
-        # letters = {
-        #     "keys": list(self.letters.keys()),
-        #     "values": [value.value for value in self.letters.values()],
-        # }
-
         return {
-            "state": self.state.value,
-            "guess_validness": self.guess_validness.value,
-            "attempt": self.attempt,
-            "positions": [position.value for position in self.positions],
-            # "letters": list(zip(letters["keys"], letters["values"])),
+            "game_state": self.game_state.value,
+            "attempt_validness": self.attempt_validness.value,
+            "attempt_number": self.attempt_number,
+            "attempt_hits": [hit.value for hit in self.attempt_hits],
         }
 
-    def play(self, player_guess: str) -> dict:
+    def play(self, attempt_guess: str) -> dict:
         """
         Execute an attempt at guessing the correct solution
 
         ARGUMENTS:
         -----------
 
-        player_guess: str (required)
+        attempt_guess: str (required)
             The word guessed by the player
 
         RETURNS:
@@ -119,65 +104,49 @@ class GameCore:
             Returns the value returned by the '__response()' method
         """
 
-        # Init 'positions'
-        self.positions = [PositionStatus.undefined for _ in range(self.words_length)]
+        # Init attempt hits
+        self.attempt_hits = [Hit.INCORRECT for _ in range(self.words_length)]
 
-        # Check whether game is over
-        if self.state != State.running:
-            self.guess_validness = GuessValidness.undefined
-
-            return self.__response()
-
-        # Check whether "player_guess" is valid
-        elif player_guess not in self.valid_guesses + self.valid_answers:
-            self.guess_validness = GuessValidness.invalid
+        # Check whether game is over or attempt guess is invalid
+        if (
+            self.game_state != GameState.RUNNING
+            or attempt_guess not in self.valid_guesses + self.valid_answers
+        ):
+            self.attempt_validness = AttemptValidness.INVALID
 
             return self.__response()
 
-        # Player guess is valid, increment attempt counter
-        self.guess_validness = GuessValidness.valid
-        self.attempt += 1
+        # The attempt guess is valid, increment attempt counter
+        self.attempt_validness = AttemptValidness.VALID
+        self.attempt_number += 1
 
-        # Pre fill positions
+        # Init letters counter
+        counter = {}
+        for letter in set(attempt_guess):
+            counter[letter] = self.game_solution.count(letter)
+
+        # Compute attempt hits
         for i in range(self.words_length):
-            if player_guess[i] == self.solution[i]:
-                self.positions[i] = PositionStatus.correct
 
-            elif player_guess[i] in self.solution:
-                self.positions[i] = PositionStatus.included
+            if attempt_guess[i] == self.game_solution[i]:
+                self.attempt_hits[i] = Hit.CORRECT
+                counter[attempt_guess[i]] -= 1
 
-            else:
-                self.positions[i] = PositionStatus.undefined
-
-        #! Refactor this
-        # Count number of element occurances in solution's word
-        chars = {}
-        for char in self.solution:
-            if char not in chars:
-                chars[char] = self.solution.count(char)
-
-        #! Refactor this
-        # Remove extra occurrances of elements from positions - part 1
-        for i in range(self.words_length):
-            if self.positions[i] == PositionStatus.correct:
-                chars[player_guess[i]] -= 1
-
-        #! Refactor this
-        # Remove extra occurrances of elements from positions - part 2
-        for i in range(self.words_length):
-            if self.positions[i] == PositionStatus.included:
-                chars[player_guess[i]] -= 1
-
-                if chars[player_guess[i]] < 0:
-                    self.positions[i] = PositionStatus.undefined
+            elif counter[attempt_guess[i]] > 0:
+                self.attempt_hits[i] = Hit.MISPLACED
+                counter[attempt_guess[i]] -= 1
 
         # Check if the number of attempts is over
-        if self.attempt >= self.max_attempts:
-            self.state = State.loose
+        if self.attempt_number >= self.max_attempts:
+
+            self.game_state = GameState.LOST
+            return self.__response()
 
         # Check if the correct word was guessed
-        if self.positions == [PositionStatus.correct for _ in range(self.words_length)]:
-            self.state = State.win
+        if self.attempt_hits == [Hit.CORRECT for _ in range(self.words_length)]:
+
+            self.game_state = GameState.WON
+            return self.__response()
 
         # Standard response for when the guess is valid
         return self.__response()
