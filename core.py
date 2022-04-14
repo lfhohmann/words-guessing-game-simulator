@@ -5,17 +5,40 @@
 This is the core simulator for games like Wordle, Quordle, Octordle, Term.ooo and etc...
 """
 
-from consts import *
+from enum import Enum
 
 
 __author__ = "Lucas Hohmann"
 __email__ = "lfhohmann@gmail.com"
 __user__ = "@lfhohmann"
 
-__date__ = "2022/04/13"
+__date__ = "2022/04/14"
 __status__ = "Production"
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __license__ = "MIT"
+
+
+class Hit(Enum):
+    """Class representing the status of a hit"""
+
+    CORRECT = "c"  # Letter is correct
+    MISPLACED = "m"  # Letter is misplaced
+    INCORRECT = "_"  # Letter is incorrect
+
+
+class GameState(Enum):
+    """Class representing the game state"""
+
+    RUNNING = "r"  # Game running
+    LOST = "l"  # Game lost
+    WON = "w"  # Game won
+
+
+class AttemptValidness(Enum):
+    """Class representing the attempt validness"""
+
+    INVALID = "i"  # Attempt is invalid
+    VALID = "v"  # Attempt is valid
 
 
 class GameCore:
